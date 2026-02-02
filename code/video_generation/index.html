@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title> Experiment </title>
+
+
+    <link rel="stylesheet" href='../../docs/css/jquery-ui-edit.css' />
+
+
+    <script src='../../docs/js/jquery.min.js'></script>
+    <script src='../../docs/js/jquery-ui.min.js'></script>
+    <script src='../../docs/js/timeme.min.js'></script>
+
+    
+
+    <!-- Phaser-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <script type="module" src="../../docs/phaser/src/game.js"></script>
+    <script src="../../docs/vignettes/utils.js"></script>
+    <script src="../../docs/vignettes/scenes.js"></script>
+
+    
+</head>
+
+<body>
+    <div id="canvas-container" style="width: 300px; height: 300px; margin: auto;"></div>
+</body>
+
+<script>
+
+    // Initialize the Phaser game
+    let storyID = 'competitive-A_knows_B:No-C_knows_B:Yes-C_knows_care:No-n_fruits(2;1)-Apple;Orange'
+    // Get the index of trialsCases where 'id' == storyID
+    let storyData = trialsCases.find(trial => trial.id === storyID);
+
+    let vignetteIdx = 0;
+    let vignette = storyData.timeline[vignetteIdx];
+    let phaserParams = vignetteToPhaser(vignette);
+    console.log('vignette', vignette, 'phaserParams', phaserParams);
+
+    // Trial specific variables can be defined here
+    var trialPhaserConfig = {
+        framework: 'jspsych',
+        endTrialCondition: 'button',
+        userId: 0,
+        characterChoices: phaserParams.characterChoices,
+        characterColors: phaserParams.characterColors,
+        sceneStr: phaserParams.sceneStr,
+        baseURL: '../../docs/',
+        //gif: 'auto'
+    };
+    window.vignetteStr = vignette
+    window.trialPhaserConfig = trialPhaserConfig;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const width = 300;
+        const height = 300;
+        console.log('scene', window.MedievalScene)
+        window.game = runPhaser(width, height, 'canvas-container');
+    });
+    
+    
+</script>
+
+</html>

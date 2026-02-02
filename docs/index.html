@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title> Experiment </title>
+        
+        <link rel="stylesheet" href='css/jspsych.css' />
+        <link rel="stylesheet" href='css/jquery-ui-edit.css' />
+       
+        <script src='js/jquery.min.js'></script>
+        <script src='js/jquery-ui.min.js'></script>
+        <script src='js/timeme.min.js'></script>
+
+        <!-- Phaser-->
+        <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+        <script type="module" src="phaser/src/game.js"></script>
+        <script src="vignettes/utils.js"></script>
+
+        <script src='js/jspsych.js'></script>
+        <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
+        <script src='js/plugin-preload.js'></script>
+        <script src='js/plugin-instructions.js'></script>
+        <script src='js/plugin-html-button-response.js'></script>
+        <script src='js/plugin-survey-multi-choice.js'></script>
+        <script src='js/plugin-survey-html-form.js'></script>
+
+        <!-- jsPsych plugins -->
+         <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+        <script src="https://unpkg.com/@jspsych/plugin-canvas-slider-response@1.1.3"></script>
+        <script src="https://unpkg.com/@jspsych/plugin-canvas-button-response@1.1.3"></script>
+        <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
+        <script src='js/instructions.js'></script>
+        <!-- TRIAL LOGIC -->
+        <script src="vignettes/scenes.js"></script>
+
+        <script src='js/consent.js'></script>
+        <script src='js/feedback-demographics.js'></script>
+        <script src='js/utils.js'></script>
+    
+    </head>
+
+    <body>
+    </body>
+
+
+    <script>
+        console.log('Loading jsPsych plugins and utils');
+        console.log(window.MedievalScene)
+    
+        // more accurate timing than jsPsych built-in timer
+        TimeMe.initialize({
+            currentPageName: 'page',
+            idleTimeoutInSeconds: 15
+        });
+
+        // -----------------------------------------------------
+        // Variables
+        // -----------------------------------------------------
+
+        var debugMode = true; // Set to true to enable debugging mode
+
+        // Task variants: separatePrefs in blocks or not
+        var separatePrefs = true; // Set to true to run the experiment with separate preferences for each character
+        var randomizeSecondThirdVignettes = true; // Set to true to randomize the order of the second and third vignettes
+        var randomizeQuestionsOrder = true; // Set to true to randomize the order of the questions in the survey
+        
+        // Logic variables
+        const endPhaserIndex = 2;
+        var endPhaser = 0;
+        var comprehensionOngoing = true;
+        var looping = false;
+        var comprehensionTrialIdx = 0;
+        var nComprehensionTrials = 0
+        for (let i = 0; i < trialsCases.length; i++) {
+            if (trialsCases[i].comprehension.use == true) {
+                nComprehensionTrials++;
+            }
+        }
+        var trialIdx = 0;
+        var nTrials = 0;
+        for (let i = 0; i < trialsCases.length; i++) {
+            if (trialsCases[i].trial.use == true) {
+                nTrials++;
+            }
+        }
+        const totalTrials = nComprehensionTrials + nTrials;
+
+        if (debugMode) {
+            console.log('Num Comprehension:', nComprehensionTrials,'Total trials:', totalTrials);
+        } 
+
+        const prolific_return_url = "https://app.prolific.com/submissions/complete?cc=CYBS69HT";
+        
+        // -----------------------------------------------------
+        // initialize jsPsych
+        // -----------------------------------------------------
+        const jsPsych = initJsPsych({
+            show_progress_bar: true,
+            auto_update_progress_bar: false,
+            on_finish: () => {
+                $('#jspsych-content').css('margin-top', 'auto');
+                $('#jspsych-content').html('<div style="margin: auto;"> <p>' +
+                    ' Thank you for participating in this experiment! </p>' +
+                    '<p> Redirecting you back to Prolific... </p>');
+                setTimeout(function(){}, 200);
+                // TODO: REPLACE WITH PROLIFIC COMPLETION URL
+                window.location = '';
+            }
+        });
+
+
+        // -----------------------------------------------------
+        // Preload images
+        // -----------------------------------------------------
+        // Load all images in ./images/ and all images in the ./phaser/assets/characters and ./phaser/assets/objects/
+        var imagePaths = [
+            './images/characters.png',
+            './phaser/assets/characters/agent_red_happy.png',
+            './phaser/assets/characters/agent_red.png',
+            './phaser/assets/characters/agent_red_sad.png',
+            './phaser/assets/characters/agent_green_happy.png',
+            './phaser/assets/characters/agent_green.png',
+            './phaser/assets/characters/agent_green_sad.png',
+            './phaser/assets/characters/agent_purple_happy.png',
+            './phaser/assets/characters/agent_purple.png',
+            './phaser/assets/characters/agent_purple_sad.png',
+            './phaser/assets/objects/applegreen1.png',
+            './phaser/assets/objects/applegreen2.png',
+            './phaser/assets/objects/orange1.png',
+            './phaser/assets/objects/orange2.png',
+            './phaser/assets/tilesets/blacksmith-smelter.png',
+            './phaser/assets/tilesets/victorian-market.png',
+            './phaser/assets/tilesets/victorian-streets.png',
+            './phaser/assets/tilesets/victorian-garden.png',
+            './phaser/assets/tilesets/terrain-v7.png',
+            './phaser/assets/tilesets/tavern-deco.png',
+            './phaser/assets/tilesets/tavern-furniture.png',
+            './phaser/assets/tilesets/container.png',
+        ];
+        for (let i = 0; i < trialsCases.length; i++) {
+            for (let j = 0; j < trialsCases[i].timeline.length; j++) {
+                imagePaths.push(`./images/${trialsCases[i].timeline[j]}.png`);
+            }
+        }
+        // Load all images in ./images/ and all images in the ./phaser/assets/characters and ./phaser/assets/objects/
+        var preload_trial = {
+            type: jsPsychPreload,
+            images: imagePaths,
+            on_load: function() {
+                console.log('All images preloaded');
+            },
+            on_progress: function() {
+                console.log('Preloading images...');
+            }
+        };
+
+
+        // -----------------------------------------------------
+        // Define trial stimuli pages
+        // -----------------------------------------------------
+
+        var trial_pres = {
+            preamble: function() {
+                return `<h4>Story ${trialIdx + 1} out of ${nTrials}</h4>` +
+                    `Please watch the video and read the vignette below.`;
+            },
+            stimulus: `
+                <div id="stimuli-container" style="width:100%"> 
+                    <div id="canvas-container"></div><div id="vignette-container"></div>
+                </div>
+                <span id="scene-description" style="width:100%"></span>
+            `,
+            type: jsPsychHtmlButtonResponse,
+            choices: ['Continue'],
+            on_start: function(trial) {
+                
+                
+                let subTrial = jsPsych.getCurrentTimelineNodeID().split('-').slice(-1)[0][0];
+                let vignette = trial.data.vignette.timeline[subTrial];
+                let phaserParams = vignetteToPhaser(vignette);
+                // Trial specific variables can be defined here
+                var trialPhaserConfig = {
+                    framework: 'jspsych',
+                    endTrialCondition: 'button',
+                    userId: 0,
+                    characterChoices: phaserParams.characterChoices,
+                    characterColors: phaserParams.characterColors,
+                    sceneStr: phaserParams.sceneStr,
+                };
+                window.vignetteStr = vignette
+                window.trialPhaserConfig = trialPhaserConfig;
+            },
+            on_load: function() {
+                $('#jspsych-html-button-response-stimulus').css({
+                    'display':'flex', 
+                    'flex-direction': 'column',
+                    'justify-content': 'space-between',
+                    'align-items': 'center',
+                });
+
+                $('#stimuli-container').css({
+                    'display': 'flex',
+                    'flex-direction': 'row',
+                    'justify-content': 'space-between',
+                    'align-items': 'center',
+                    'width': '100%',
+                });
+
+                $('#canvas-container').css({
+                    'width': '300px',
+                    'height': '300px',
+                    'margin': 0,
+                    'padding': 0,
+                    'position': 'relative',
+                });
+
+                // Subtrial
+                let subTrial = jsPsych.getCurrentTimelineNodeID().split('-').slice(-1)[0][0];
+
+                // Console log the case
+                console.log('Current vignette:', jsPsych.timelineVariable('case'));
+
+                // Create a replay button
+                const replayButton = document.createElement('button');
+                replayButton.innerText = 'Replay Video';
+                // Copy css of the jsPsych button
+                replayButton.className = 'jspsych-btn jspsych-html-button-response-button';
+                $(replayButton).insertBefore( $('#jspsych-html-button-response-button-0'))
+                $(replayButton).on('click', function() {
+                    //console.log('Replay button clicked');
+                    if (window.game) {
+                        // Destroy the Phaser game if it exists
+                        if (window.game) {
+                            window.game.destroy(true);
+                            window.game = null;
+                        }
+                        // Run the Phaser game
+                        window.game = runPhaser(300, 300, 'canvas-container');
+
+                        // Disable replay button
+                        replayButton.setAttribute("disabled", "disabled");
+                    } else {
+                        console.error('Game not initialized yet');
+                    }
+                });
+
+
+                // Disable the buttons
+                if (!looping && !debugMode) {
+                    var btns = document.querySelectorAll("#jspsych-html-button-response-btngroup button");
+                    for (var i = 0; i < btns.length; i++) {
+                        btns[i].setAttribute("disabled", "disabled");
+                    }
+                }
+    
+
+                // Add a vignette number
+                //let scenarioIdx = trialIdx
+                //if (comprehensionOngoing) {
+                //    scenarioIdx = comprehensionTrialIdx;
+                //}
+                //
+                //let subTrial = jsPsych.getCurrentTimelineNodeID().split('-').slice(-1)[0][0];
+                //let vignetteNumber = document.getElementById('scene-number');
+                //vignetteNumber.innerHTML = `<h4>Story ${parseInt(scenarioIdx) + 1}</h4>Scene ${parseInt(subTrial) + 1}`;
+                //vignetteNumber.style.textAlign = 'center';
+                //vignetteNumber.style.fontSize = '20px';
+                //vignetteNumber.style.marginBottom = '10px';
+
+                $('#vignette-container').css({
+                    padding: '5px'
+                })
+
+
+                // Run the Phaser game
+                window.game = runPhaser(300, 300, 'canvas-container');
+
+                // Display the image in vignette
+                //let imgPath = `./images/${vignetteStr}.png`;
+                //window.sceneImage = addSceneImage(250, 'vignette-container', imgPath);
+                // Create a container for the stimuli and put in'jspych-content" before the questions
+                const container = document.createElement('div');
+                container.id = 'stimuli-container';
+                container.style.display = 'flex';
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
+                container.style.marginBottom = '20px';
+                $(container).insertAfter($('#vignette-container'));
+
+                var scenesImages = []
+
+                // Make sure the buttons are not disabled
+                for (let i = 0; i < jsPsych.timelineVariable('case').timeline.length; i++) {
+                    // Add a div for the vignette number and image
+                    const vignetteDiv = document.createElement('div');
+                    vignetteDiv.style.transition = 'opacity 1s ease-in-out';
+                    vignetteDiv.style.display = 'flex';
+                    vignetteDiv.style.alignItems = 'center';
+                    vignetteDiv.style.justifyContent = 'center';
+                    vignetteDiv.style.marginRight = '10px';
+                    vignetteDiv.style.flexDirection = 'column';
+                    container.appendChild(vignetteDiv);
+
+                    // Add the vignette number
+                    const vignetteNumber = document.createElement('span');
+                    vignetteNumber.innerText = `${i + 1}`;
+                    vignetteNumber.style.fontSize = '20px';
+                    vignetteNumber.style.marginRight = '10px';
+                    vignetteDiv.appendChild(vignetteNumber);
+                
+                    // Add the vignette image
+                    const vignette = jsPsych.timelineVariable('case').timeline[i];
+                    const imgPath = `./images/${vignette}.png`;
+                    const img = document.createElement('img');
+                    img.src = imgPath;
+                    img.style.width = '150px'; // Adjust size as needed
+                    img.style.height = 'auto';
+                    console.log(img)
+
+                    if (i < subTrial) {
+                        img.style.opacity = '0.3'; // Current image is hidden until fade-in
+                    } else {
+                        img.style.opacity = '0'; // Future images are also hidden
+                    }
+                    
+                    vignetteDiv.appendChild(img);
+                    scenesImages.push(img); // Store the image for later use
+                }
+
+
+                // Add the scene description
+                let sceneDescription = document.getElementById('scene-description');
+                sceneDescription.innerHTML = `<p>${scenes[vignetteStr].description}</p>`;
+                sceneDescription.style.textAlign = 'center';
+                sceneDescription.style.fontSize = '16px';
+                sceneDescription.style.marginTop = '10px';
+                sceneDescription.style.marginBottom = '10px';
+                sceneDescription.style.opacity = '0'; // Start with opacity 0
+                
+
+
+                // Fade in the description after a delay
+                setTimeout(() => {
+                    sceneDescription.style.transition = 'opacity 1s ease-in-out'; // Smooth transition
+                    sceneDescription.style.opacity = '1'; // Fade in the description
+                }, 500); // 1 second delay
+                
+                // Fade in the image after a delay
+                scenesImages[subTrial].style.opacity = '0'; // Start with opacity 0
+                scenesImages[subTrial].style.transition = 'opacity 1s ease-in-out'; // Smooth transition
+                setTimeout(() => {
+                    if (scenesImages[subTrial]) {
+                        scenesImages[subTrial].style.opacity = '1';
+                    }
+                }, 500); // 7 second delay
+            },
+            on_finish: function() {
+                // Destroy the Phaser game
+                if (window.game) {
+                    window.game.destroy(true);
+                    window.game = null;
+                }
+                // Remove the vignette image
+                if (window.sceneImage) {
+                    window.sceneImage.remove();
+                    window.sceneImage = null;
+                }
+            },
+            timeline: [
+                {
+                    type: jsPsychHtmlButtonResponse,
+                    data: {vignette: jsPsych.timelineVariable('case')},
+                },
+                {
+                    type: jsPsychHtmlButtonResponse,
+                    data: {vignette: jsPsych.timelineVariable('case')},
+                },
+                {
+                    type: jsPsychHtmlButtonResponse,
+                    data: {vignette: jsPsych.timelineVariable('case')},
+                },
+            ],
+            conditional_function: function(){
+                if (endPhaser > 0) {
+                    //console.log('Skipping to next trial');
+                    return false; // Skip this trial
+                }
+                return true; // Run this trial
+            },
+        }
+
+
+        // -----------------------------------------------------
+        // Instructions and comprehension questions
+        // -----------------------------------------------------
+
+        const comprehension_instructions = {
+            type: jsPsychInstructions,
+            pages: comprehension_instruction_pages,
+            show_clickable_nav: true,
+        };
+
+    
+        const comprehension_questions = {
+            type: jsPsychSurveyMultiChoice,
+            questions: [
+                {
+                    // TODO: ADD YOUR COMPREHENSION QUESTIONS
+                    prompt: 'What does <span style="color:red; font-weight:bold">Red</span> prefer?',
+                    options: ['Apple', 'Orange'],
+                    horizontal: true,
+                    required: debugMode ? false : true
+                },
+                {
+                    prompt: 'What does <span style="color:green; font-weight:bold">Green</span> prefer?',
+                    options: ['Apple', 'Orange'],
+                    horizontal: true,
+                    required: debugMode ? false : true
+                },
+                {
+                    // TODO: ADD YOUR COMPREHENSION QUESTIONS
+                    prompt: 'What did <span style="color:red; font-weight:bold">Red</span> pick in scene 2 and 3?',
+                    options: ['Apple', 'Orange'],
+                    horizontal: true,
+                    required: debugMode ? false : true
+                },
+                {
+                    prompt: 'Does <span style="color:red; font-weight:bold">Red</span> know what <span style="color:green; font-weight:bold">Green</span> prefers?',
+                    options: ['Yes', 'No'],
+                    horizontal: true,
+                    required: debugMode ? false : true
+                },
+                {
+                    prompt: 'Does <span style="color:purple; font-weight:bold">Purple</span> know what <span style="color:green; font-weight:bold">Green</span> prefers?',
+                    options: ['Yes', 'No'],
+                    horizontal: true,
+                    required: debugMode ? false : true
+                }
+
+            ],
+            preamble: 'Please answer a few comprehension questions so that we can make sure' +
+                ' that you understand the setup.',
+            
+            on_load: function() {
+
+                // Create container for the stimuli and
+                $(".jspsych-survey-multi-choice-question").css({'text-align': 'center'});
+                // Create a container for the stimuli and put in'jspych-content" before the questions
+                const container = document.createElement('div');
+                container.id = 'stimuli-container';
+                container.style.display = 'flex';
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
+                container.style.marginBottom = '20px';
+                const jsPsychContent = document.getElementById('jspsych-content');
+                jsPsychContent.insertBefore(container, document.getElementById('jspsych-survey-multi-choice-form'));
+
+                // Make sure the buttons are not disabled
+                for (let i = 0; i < jsPsych.timelineVariable('case').timeline.length; i++) {
+                    // Add a div for the vignette number and image
+                    const vignetteDiv = document.createElement('div');
+                    vignetteDiv.style.transition = 'opacity 1s ease-in-out';
+                    vignetteDiv.style.display = 'flex';
+                    vignetteDiv.style.alignItems = 'center';
+                    vignetteDiv.style.justifyContent = 'center';
+                    vignetteDiv.style.marginRight = '10px';
+                    vignetteDiv.style.flexDirection = 'column';
+                    container.appendChild(vignetteDiv);
+                    // Add the vignette number
+                    const vignetteNumber = document.createElement('span');
+                    vignetteNumber.innerText = `${i + 1}`;
+                    vignetteNumber.style.fontSize = '20px';
+                    vignetteNumber.style.marginRight = '10px';
+                    vignetteDiv.appendChild(vignetteNumber);
+                
+                    // Add the vignette image
+                    const vignette = jsPsych.timelineVariable('case').timeline[i];
+                    const imgPath = `./images/${vignette}.png`;
+                    const img = document.createElement('img');
+                    img.src = imgPath;
+                    img.style.width = '150px'; // Adjust size as needed
+                    img.style.height = 'auto';
+                    
+                    vignetteDiv.appendChild(img);
+                }
+            },
+            on_finish: function(data){
+                // Get the vignette
+                let comprehensionAnswers = data.vignette.comprehension;
+                //console.log('Comprehension answers:', comprehensionAnswers);
+                data.correct = (data.response.Q0 == comprehensionAnswers.Q0) &&
+                               (data.response.Q1 == comprehensionAnswers.Q1) &&
+                               (data.response.Q2 == comprehensionAnswers.Q2) &&
+                               (data.response.Q3 == comprehensionAnswers.Q3) &&
+                               (data.response.Q4 == comprehensionAnswers.Q4);
+                
+                if (debugMode) {
+                    data.correct = true; // Force correct answers in debug mode
+                }
+
+                if (data.correct) {
+                    data['local_idx'] = comprehensionTrialIdx;
+    
+                    data['story_id'] = data.vignette.id;
+                    data['description'] = data.vignette.description;
+                    data['vignette_1'] = data.vignette.timeline[0];
+                    data['vignette_2'] = data.vignette.timeline[1];
+                    data['vignette_3'] = data.vignette.timeline[2];
+
+                    // Order of vignettes, if present in data.vignette.timeline[i] then 0 else 1
+                    if (data.vignette_2.includes('present')) {
+                        data['vignette_order'] = 'present';
+                    } else {
+                        data['vignette_order'] = 'absent';
+                    }
+    
+                    looping = false;
+                    comprehensionTrialIdx ++
+
+                    if (comprehensionTrialIdx >= nComprehensionTrials) {
+                        comprehensionOngoing = false;
+                    }
+                    
+                    //console.log('Setting progress bar to:', comprehensionTrialIdx / totalTrials, comprehensionTrialIdx, totalTrials);
+                    jsPsych.setProgressBar(comprehensionTrialIdx / totalTrials);
+                } else {
+                    looping = true;
+                    data['nloops'] = data.nloops + 1;
+                }
+            },
+            data: {
+                trial: 'comprehension',
+                vignette: jsPsych.timelineVariable('case'),
+                nloops: 0
+            },
+        }
+
+        
+        const fail_comprehension = {
+            timeline: [{
+                type: jsPsychHtmlButtonResponse,
+                stimulus: 'Unfortunately, you missed some of the comprehension ' +
+                    'questions.</p> <p> Please review the instructions again.',
+                choices: ['Review'],
+            }],
+            conditional_function: function(){
+                var data = jsPsych.data.get().last(1).values()[0];
+                //console.log(data)
+                // Get the wrong answer
+                return !(data.correct);
+            }
+        }
+        
+        var continue_page = {
+            timeline: [{
+                type: jsPsychHtmlButtonResponse,
+                stimulus: function () {
+                    return '<p>From now on, we will not show you the videos, just the vignettes.<br>Click below to proceed to the next story.</p>'
+                },
+                choices: ['Continue'],
+            }],
+            conditional_function: function() {
+                console.log('End phaser:', endPhaser);
+                // If comprehension is ongoing, return false to skip this trial
+                if (endPhaser == 1) {
+                    return true;
+                }
+                // Otherwise, return true to show the continue page
+                return false;
+            },
+        }
+
+        // ------------------------------------------------------
+        // Define the trials for the comprehension questions
+        // -----------------------------------------------------
+
+        var timelineVariablesComprehension = [];
+        for (let i=0; i < trialsCases.length; i++) {
+            if (trialsCases[i].comprehension.use == true) {
+                timelineVariablesComprehension.push({case: trialsCases[i]});
+            }
+        }
+
+        //console.log('Timeline variables:', timelineVariablesComprehension)
+       
+        const comprehension_loops = []
+
+        for (let i = 0; i < timelineVariablesComprehension.length; i++) {
+            comprehension_loops.push({
+                timeline: [trial_pres, comprehension_questions, fail_comprehension],
+                randomize_order: false,
+                timeline_variables: [timelineVariablesComprehension[i]],
+                loop_function: function(data) {
+                    var last_trial = jsPsych.data.get().last(1).values()[0];
+                    //console.log(last_trial);
+                    return !(last_trial.correct);
+                },
+            });
+        }
+
+        // -----------------------------------------------------
+        
+
+        // -----------------------------------------------------
+        // experiment trials
+        // -----------------------------------------------------
+
+        // Instructions for test
+
+        const trial_instructions = {
+            type: jsPsychInstructions,
+            pages: instruction_pages,
+            show_clickable_nav: true,
+        };
+        
+
+        // Test
+        const socialGoalHtml = `
+                <p>How does <span style="color:red; font-weight:bold">Red</span> feel about <span style="color:green; font-weight:bold">Green</span>?</p>
+                <div id="social_goal" class="slider-ui">
+                    <div id="custom-handle-social_goal" class="ui-slider-handle"></div>
+                </div>
+                <div style="width:100%">
+                    <div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(0% - (50% / 2) - -7.5px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;"><span style="color:red; font-weight:bold">Red</span> dislikes <span style="color:green; font-weight:bold">Green</span>.</span></div><div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(50% - (50% / 2) - 0px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;"></span></div><div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(100% - (50% / 2) - 7.5px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;"><span style="color:red; font-weight:bold">Red</span> likes <span style="color:green; font-weight:bold">Green</span>.</span>
+                    </div>
+                </div>`
+
+        const presentationalGoalHtml = `
+                <p>How much does <span style="color:red; font-weight:bold">Red</span> care about what <span style="color:purple; font-weight:bold">Purple</span> thinks of <span style="color:red; font-weight:bold">Red</span>?</p>
+                <div id="presentational_goal" class="slider-ui">
+                    <div id="custom-handle-presentational_goal" class="ui-slider-handle"></div>
+                </div>
+                <div style="width:100%">
+                    <div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(0% - (50% / 2) - -7.5px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;">not at all</span></div><div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(50% - (50% / 2) - 0px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;"></span></div><div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(100% - (50% / 2) - 7.5px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;">very much</span>
+                    </div>
+                </div>
+
+                <br>
+
+                <p>What does <span style="color:red; font-weight:bold">Red</span> want <span style="color:purple; font-weight:bold">Purple</span> to think?</p>
+                <div id="social_goal_purple" class="slider-ui">
+                    <div id="custom-handle-social_goal_purple" class="ui-slider-handle"></div>
+                </div>
+                <div style="width:100%">
+                    <div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(0% - (50% / 2) - -7.5px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;">That <span style="color:red; font-weight:bold">Red</span> dislikes <span style="color:green; font-weight:bold">Green</span>.</span></div><div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(50% - (50% / 2) - 0px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;"></span></div><div style="border: 1px solid transparent; display: inline-block; position: absolute; left:calc(100% - (50% / 2) - 7.5px); text-align: center; width: 50%;">
+                        <span style="text-align: center; font-size: 80%;">That <span style="color:red; font-weight:bold">Red</span> likes <span style="color:green; font-weight:bold">Green</span>.</span>
+                    </div>
+                </div>`
+
+        var goalsQuestionsHtml = [socialGoalHtml, presentationalGoalHtml];
+        var questionOrder = 0;
+        if (randomizeQuestionsOrder) {
+            questionOrder = Math.floor(Math.random() * 2);
+        }
+        var goalsQuestionsHtml = [
+            goalsQuestionsHtml[questionOrder],
+            goalsQuestionsHtml[1 - questionOrder]
+        ]
+        
+        // Ask questions to participants
+        var trial_questions = {
+            type: jsPsychSurveyHtmlForm,
+            preamble: function () {
+                return `<h4>Story ${trialIdx + 1} out of ${nTrials} </h4>` +
+                    `Please answer the following questions about the story below:`;
+            },
+            html: `
+
+                ${goalsQuestionsHtml[0]}
+
+                <br>
+
+                ${goalsQuestionsHtml[1]}
+
+                <br>
+
+                <input type="hidden" name="social_goal" id="social_goal_input" value="50">
+                <input type="hidden" name="presentational_goal" id="presentational_goal_input" value="50">
+                <input type="hidden" name="social_goal_purple" id="social_goal_purple_input" value="50">
+            `,
+            on_finish: function(data) {
+                // Make sure comprehension is removed
+                comprehensionOngoing = false;
+
+                // Increment the trial index
+                trialIdx++;
+
+                // If trialIndex is above a certain number, skip go the next trial
+                if (trialIdx >= endPhaserIndex) {
+                    //console.log('End phaser reached, skipping to next trial');
+                    endPhaser ++;
+                }
+
+                jsPsych.setProgressBar((trialIdx + nComprehensionTrials) / totalTrials);
+
+                // Add the responses to the data
+
+                data['trial_idx'] = trialIdx;
+
+                data['local_idx'] = trialIdx - 1;
+                data['social_goal'] = parseInt(data.response.social_goal)
+                data['presentational_goal'] = parseInt(data.response.presentational_goal);
+                data['social_goal_purple'] = parseInt(data.response.social_goal_purple);
+
+                data['story_id'] = data.vignette.id;
+                data['description'] = data.vignette.description;
+                data['vignette_1'] = data.vignette.timeline[0];
+                data['vignette_2'] = data.vignette.timeline[1];
+                data['vignette_3'] = data.vignette.timeline[2];
+
+                // Order of vignettes, if present in data.vignette.timeline[i] then 0 else 1
+                if (data.vignette_2.includes('present')) {
+                    data['vignette_order'] = 'present';
+                } else {
+                    data['vignette_order'] = 'absent'
+                }
+                
+                //console.log('Trial responses:', data);
+            },
+            on_load: function() {
+
+                // Make survey-html-form postion relative
+                document.getElementById('jspsych-survey-html-form').style.position = 'relative';
+                document.getElementById('jspsych-survey-html-form').style.opacity = '0';
+                // Disable the submit button
+                var btn = $('#jspsych-survey-html-form input[type="submit"]');
+                btn.attr('disabled', 'disabled');
+                if (debugMode) {
+                    btn.removeAttr('disabled');
+                }
+
+                // and enable the submit button if all sliders have been moved
+                var sliders = document.querySelectorAll('.slider-ui');
+                let sliderClicked = Array.from(sliders).fill(false);
+
+                // Activate the sliders
+                $(".slider-ui").each(function() {
+                    let sliderId = $(this).attr('id');
+                    $(this).slider({
+                        orientation: 'horizontal',
+                        animate: 'fast',
+                        min:0,
+                        max:100,
+                        step: 1,
+                        create: function(event, ui) {
+                            $(this).slider("value", 50);
+                        },
+                        slide: function(event, ui) {
+                            // Update the input value
+                            $(`#${sliderId}_input`).val(ui.value);
+                            // Show the custom handle
+                            $(`#custom-handle-${sliderId}`).show()
+                            sliderClicked[Array.from(sliders).indexOf(this)] = true;
+
+                            if (sliderClicked.every(clicked => clicked)) {
+                                btn.removeAttr('disabled');
+                            } else {
+                                btn.attr('disabled', 'disabled');
+                            }
+                        }
+                    });
+                    $(`#custom-handle-${sliderId}`).hide() 
+                });
+
+            
+
+                // Create a container for the stimuli and put in'jspych-content" before the questions
+                const container = document.createElement('div');
+                container.id = 'stimuli-container';
+                container.style.display = 'flex';
+                container.style.justifyContent = 'space-between';
+                container.style.alignItems = 'center';
+                container.style.marginBottom = '20px';
+                const jsPsychContent = document.getElementById('jspsych-content');
+                jsPsychContent.insertBefore(container, document.getElementById('jspsych-survey-html-form'));
+
+                // Add all the images to the container in the timeline to the container
+                let fade = endPhaser;
+                // If fade is true, add a fade-in effect to the images and a 3 second delay between each image
+                if (fade) {
+                    let delay = 0;
+                    for (let i = 0; i < jsPsych.timelineVariable('case').timeline.length; i++) {
+
+                        const vignetteDiv = document.createElement('div');
+                        vignetteDiv.style.transition = 'opacity 1s ease-in-out';
+                        vignetteDiv.style.opacity = '0'; // Start with opacity 0
+                        vignetteDiv.style.display = 'flex';
+                        vignetteDiv.style.alignItems = 'center';
+                        vignetteDiv.style.justifyContent = 'center';
+                        vignetteDiv.style.marginRight = '10px';
+                        vignetteDiv.style.flexDirection = 'column';
+                        container.appendChild(vignetteDiv);
+
+                        // Add the vignette number
+                        const vignetteNumber = document.createElement('span');
+                        vignetteNumber.innerText = `${i + 1}`;
+                        vignetteNumber.style.fontSize = '20px';
+                        vignetteNumber.style.marginRight = '10px';
+                        vignetteDiv.appendChild(vignetteNumber);
+                    
+                        // Add the vignette image
+                        const vignette = jsPsych.timelineVariable('case').timeline[i];
+                        const imgPath = `./images/${vignette}.png`;
+                        const img = document.createElement('img');
+                        img.src = imgPath;
+                        img.style.width = '150px'; // Adjust size as needed
+                        img.style.height = 'auto';
+                        
+                        vignetteDiv.appendChild(img);
+                        
+                        setTimeout(() => {
+                            vignetteDiv.style.opacity = '1'; // Fade in the vignette number
+                        }, delay);
+                        
+                        delay += 3000 * (1 - debugMode); // Increase delay for the next image
+                    }
+
+                    // Set opacity of the container to 1 after all images have been added
+                    $(`#jspsych-survey-html-form`).css({
+                        'transition': 'opacity 1s ease-in-out',
+                    });
+                    setTimeout(() => {
+                        $(`#jspsych-survey-html-form`).css('opacity', '1'); // Fade in the form
+                    }, delay);
+
+                    
+                } else {
+                    $('#jspsych-survey-html-form').css('opacity', '1'); // Set opacity to 1 immediately
+                    for (let i = 0; i < jsPsych.timelineVariable('case').timeline.length; i++) {
+                        // Add a div for the vignette number and image
+                        
+                        const vignetteDiv = document.createElement('div');
+                        vignetteDiv.style.transition = 'opacity 1s ease-in-out';
+                        vignetteDiv.style.display = 'flex';
+                        vignetteDiv.style.alignItems = 'center';
+                        vignetteDiv.style.justifyContent = 'center';
+                        vignetteDiv.style.marginRight = '10px';
+                        vignetteDiv.style.flexDirection = 'column';
+                        container.appendChild(vignetteDiv);
+
+                        // Add the vignette number
+                        const vignetteNumber = document.createElement('span');
+                        vignetteNumber.innerText = `${i + 1}`;
+                        vignetteNumber.style.fontSize = '20px';
+                        vignetteNumber.style.marginRight = '10px';
+                        vignetteDiv.appendChild(vignetteNumber);
+                    
+                        // Add the vignette image
+                        const vignette = jsPsych.timelineVariable('case').timeline[i];
+                        const imgPath = `./images/${vignette}.png`;
+                        const img = document.createElement('img');
+                        img.src = imgPath;
+                        img.style.width = '150px'; // Adjust size as needed
+                        img.style.height = 'auto';
+                        
+                        vignetteDiv.appendChild(img);
+                    }
+                }
+            },
+            data: {
+                trial: 'trial',
+                vignette: jsPsych.timelineVariable('case'),
+            },
+        };
+
+        // -----------------------------------------------------
+        // Define the trials for the main experiment
+        // -----------------------------------------------------
+        var blockPrefFirst = null;
+        var timelineVariables = [];
+        var trials;
+        if (!separatePrefs) {
+
+            // Trials cases
+            for (let i=0; i < trialsCases.length; i++) {
+                if (trialsCases[i].trial.use == true) {
+                    timelineVariables.push({case: trialsCases[i]});
+                }
+            }
+
+            trials = [{
+                timeline_variables: timelineVariables,
+                timeline: [
+                    trial_pres, 
+                    trial_questions, 
+                    continue_page
+                ],
+                choices: ['Continue'],
+                randomize_order: true,
+            }];
+
+        } else {
+
+            blockPrefFirst = jsPsych.randomization.shuffle(['competitive', 'complementary'])[0];
+            console.log('Block preference first:', blockPrefFirst);
+
+            let competitiveTrialsCases = [];
+            let complementaryTrialsCases = [];
+            for (let i=0; i < trialsCases.length; i++) {
+                if (trialsCases[i].trial.use == true) {
+                    // Randomize the second and third vignettes
+                    var trialCase = trialsCases[i];
+                    if (randomizeSecondThirdVignettes) {
+                        trialCase.timeline = [
+                            ...trialsCases[i].timeline.slice(0, 1),
+                            ...jsPsych.randomization.shuffle(trialsCases[i].timeline.slice(1, 3))
+                        ];
+                    } 
+
+                    if (trialCase.id.split('-')[0] == 'competitive') {
+                        competitiveTrialsCases.push({case: trialCase});
+                    } else if (trialCase.id.split('-')[0] == 'complementary') {
+                        complementaryTrialsCases.push({case: trialCase});
+                    }
+                }
+            }
+            
+            let competitiveTrials = {
+                timeline_variables: competitiveTrialsCases,
+                timeline: [
+                    trial_pres, 
+                    trial_questions, 
+                    continue_page
+                ],
+                choices: ['Continue'],
+                randomize_order: true,
+            };
+            let complementaryTrials = {
+                timeline_variables: complementaryTrialsCases,
+                timeline: [
+                    trial_pres,
+                    trial_questions,
+                    continue_page
+                ],
+                choices: ['Continue'],
+                randomize_order: true,
+            };
+
+            let competitiveNotif = `
+                <p>For the next few stories, <span style="color:red; font-weight:bold">Red</span> and <span style="color:green; font-weight:bold">Green</span> will both prefer Apples.
+                <br>
+                <img src="./images/sim_R-A_G-A_P-present.png" style="width: 200px; height: auto; margin-top: 10px; margin-bottom: 10px;">
+                <br>
+                Click below to proceed to the next story.</p>
+            `;
+            let complementaryNotif = `
+                <p>For the next few stories, <span style="color:red; font-weight:bold">Red</span> will prefer Oranges and <span style="color:green; font-weight:bold">Green</span> will prefer Apples.
+                <br>
+                <img src="./images/sim_R-O_G-A_P-present.png" style="width: 200px; height: auto; margin-top: 10px; margin-bottom: 10px;">
+                <br>
+                Click below to proceed to the next story.</p>
+            `;
+
+            // Create trials
+            if (blockPrefFirst == 'competitive') {
+                trials = [
+                    {
+                        type: jsPsychHtmlButtonResponse,
+                        stimulus: competitiveNotif,
+                        choices: ['Continue'],
+                    },
+                    competitiveTrials, 
+                    {
+                        type: jsPsychHtmlButtonResponse,
+                        stimulus: complementaryNotif,
+                        choices: ['Continue'],
+                    },
+                    complementaryTrials
+                ];
+            } else {
+                trials = [
+                    {
+                        type: jsPsychHtmlButtonResponse,
+                        stimulus: complementaryNotif,
+                        choices: ['Continue'],
+                    },
+                    complementaryTrials, 
+                    {
+                        type: jsPsychHtmlButtonResponse,
+                        stimulus: competitiveNotif,
+                        choices: ['Continue'],
+                    },
+                    competitiveTrials
+                ];
+            }
+
+            
+        }
+
+
+        // -----------------------------------------------------
+        // feedback and demographic info
+        // -----------------------------------------------------
+        // note: Prolific collects: country of birth, current country of
+        //       residence, employment status, first language, nationality,
+        //       sex, and student status
+        // form in js/feedback-demographics.js
+
+
+        // -----------------------------------------------------
+        // save data to datapipe
+        // -----------------------------------------------------
+        const unique_id = jsPsych.randomization.randomID(10);
+        const prolific_id = jsPsych.data.getURLVariable('PROLIFIC_PID');
+        const experiment_id = "QmV1qP5rw3YD"
+
+        const fileID = prolific_id? prolific_id : unique_id;
+
+        const save_trial_data = {
+            type: jsPsychPipe,
+            action: 'save',
+            // TODO: ADD EXPERIMENT ID FROM DATAPIPE
+            experiment_id: experiment_id,
+            filename: `${fileID}_trials.csv`,
+            data_string: () => {
+                // Only get the trials objects where trial_type is 'survey-html-form'
+                const data = jsPsych.data.get().filter({trial_type: 'survey-html-form', trial: 'trial'}).values();
+                // this assumes each trial data contains "trial" and "response" fields
+                const trials = data.flatMap((t) => {
+                    return [
+                        unique_id,
+                        prolific_id, 
+                        separatePrefs,
+                        randomizeSecondThirdVignettes,
+                        questionOrder == 0 ? 'social_goal' : 'presentational_goal',
+                        blockPrefFirst,
+                        t.trial_index,
+                        t.trial, 
+                        t.local_idx,
+                        t.story_id,
+                        t.description,
+                        t.vignette_1,
+                        t.vignette_2,
+                        t.vignette_3,
+                        t.vignette_order,
+                        t.rt,
+                        t.time_elapsed,
+                        t.social_goal,
+                        t.presentational_goal,
+                        t.social_goal_purple,
+                    ].join(',');
+                });
+                const header = [
+                    'id', 
+                    'prolific_id',
+                    'separatePref',
+                    'randomizeVignettes',
+                    'questionOrder',
+                    'blockPrefFirst',
+                    'trial_idx', 
+                    'trial_type', 
+                    'local_idx',
+                    'story_id',
+                    'description',
+                    'vignette_1',
+                    'vignette_2',
+                    'vignette_3',
+                    'vignette_order',
+                    'rt', 
+                    'time_elapsed', 
+                    'social_goal', 
+                    'presentational_goal', 
+                    'social_goal_purple'
+                ].join(',');
+                const trials_csv = [header, ...trials].join('\n');
+                return trials_csv;
+            }
+        };
+
+        const save_participant_data = {
+            type: jsPsychPipe,
+            action: 'save',
+            experiment_id: experiment_id,
+            filename: `${fileID}_participant.csv`,
+            data_string: () => {
+                const time = TimeMe.getTimeOnPageInSeconds('page');
+                const data = jsPsych.data.get().filter({trial_type: 'survey-html-form', trial: 'demographics'}).values()[0]['response'];
+
+                //console.log('Participant data:', data);
+                
+                if (!data) {
+                    console.error("No survey data found");
+                    return "";
+                }
+                
+                const participant = [
+                    unique_id,
+                    prolific_id,
+                    'demographics',
+                    `"${data.feedback || ""}"`,
+                    data.age || "",
+                    data.gender || "",
+                    data.race || "",
+                    `"${data.ethnicity || ""}"`,
+                    time
+                ].join(',');
+                const header = 'id,prolific_id,trial_type,feedback,age,gender,race,ethnicity,time';
+                const participant_csv = header + '\n' + participant;
+                //console.log(participant_csv);
+                return participant_csv;
+            }
+        };
+
+
+        // Final screen
+        const final_screen = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `
+                <div class="scenario-container">
+                    <h2>Thank you!</h2>
+                    <p>You have completed the study. Your responses have been recorded.</p>
+                    <p><a href=${prolific_return_url}>Click here to go back to Prolific</a></p>
+                </div>
+            `,
+            choices: 'NO_KEYS'
+        };
+        
+        
+        // -----------------------------------------------------
+        // compile timeline
+        // -----------------------------------------------------
+        var timeline = [];
+        timeline.push(preload_trial);
+        timeline.push(consent);
+        timeline.push(comprehension_instructions);
+        timeline.push(...comprehension_loops);
+        timeline.push(trial_instructions);
+        timeline.push(...trials);
+        timeline.push(feedback_demographics);
+        timeline.push(save_trial_data);
+        timeline.push(save_participant_data);
+        timeline.push(final_screen);
+
+
+        // -----------------------------------------------------
+        // run timeline
+        // -----------------------------------------------------
+        jsPsych.run(timeline);
+
+
+    </script>
+
+
+</html>
+
