@@ -19,9 +19,9 @@ We propose an extension to inverse planning where agents derive additional utili
 
 This study was preregistered at https://osf.io/2m9sv/overview 
 
-You can try out the experiment [here](https://vbtesh.github.io/presentational_goals/exp1).
+You can try out the experiment [here](https://vbtesh.github.io/cogsci2026_presentational_goals/exp1).
 
-The image stimuli for the experiment can be found [here](https://github.com/vbtesh/presentational_goals/docs/exp1/images) and the vignettes can be found [here](https://github.com/vbtesh/presentational_goals/docs/exp1/vignettes/scenes.js).
+The image stimuli for the experiment can be found [here](https://github.com/Vbtesh/cogsci2026_presentational_goals/tree/1588cf79efce8757795cb6404c8edeb1c5f2c196/docs/exp1/images) and the vignettes can be found [here](https://github.com/Vbtesh/cogsci2026_presentational_goals/blob/1588cf79efce8757795cb6404c8edeb1c5f2c196/docs/exp1/vignettes/scenes.js).
 
 ## Repository structure 
 
