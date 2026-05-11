@@ -1,6 +1,6 @@
 # Action understanding with presentational goals
 
-This repository contains the code and data for the paper "Action understanding with presentational goals" by Victor Btesh, Sarah A. Wu, and Tobias Gerstenberg, published in Cognitive Science in 2026.
+This repository contains the code and data for the paper "Action understanding with presentational goals" by Victor Btesh, Sarah A. Wu, and Tobias Gerstenberg, published in Proceedings of the Annual Meeting of the Cognitive Science Society (2026).
 
 __Contents:__
 - [Action understanding with presentational goals](#action-understanding-with-presentational-goals)
